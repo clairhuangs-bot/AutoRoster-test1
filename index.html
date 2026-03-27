@@ -4,153 +4,356 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AutoRoster — 客服團隊自動排班系統</title>
-  <meta name="description" content="客服團隊自動排班工具：一鍵產出月班表，戰力均衡、將帥防撞、缺人預警全自動。">
-  <link rel="stylesheet" href="index.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-main: #f8fafc;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --off-day-bg: #fee2e2;
+      --off-day-text: #991b1b;
+      --work-day-bg: #f0fdf4;
+      --work-day-text: #166534;
+      
+      /* Role Colors from Image */
+      --color-leader: #f59e0b;    /* 班長 - 橘色 */
+      --color-deputy: #3b82f6;    /* 副班長 - 藍色 */
+      --color-member: #8b5cf6;    /* 組員 - 紫色 */
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      margin: 0;
+    }
+
+    .app-layout {
+      display: grid;
+      grid-template-columns: 350px 1fr;
+      grid-template-rows: auto 1fr;
+      height: 100vh;
+    }
+
+    .app-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      z-index: 50;
+    }
+
+    .sidebar {
+      background: white;
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding-bottom: 40px;
+    }
+
+    .section-title {
+      padding: 20px 16px 12px 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #475569;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* --- Member Card Styles (From Image) --- */
+    .team-list {
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .member-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.1s;
+    }
+
+    .member-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 20px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .avatar-leader { background-color: var(--color-leader); }
+    .avatar-deputy { background-color: var(--color-deputy); }
+    .avatar-member { background-color: var(--color-member); }
+
+    .member-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .member-name {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .member-tags {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .tag-role {
+      font-size: 0.75rem;
+      padding: 2px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .role-leader { background: #fef3c7; color: #92400e; }
+    .role-deputy { background: #dbeafe; color: #1e40af; }
+    .role-member { background: #ede9fe; color: #5b21b6; }
+
+    .tag-speed {
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-weight: 600;
+    }
+    .speed-fast { background: #f0fdf4; color: #166534; }
+    .speed-slow { background: #fffbeb; color: #92400e; }
+
+    /* -------------------------------------- */
+
+    .main-content {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .calendar-container {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .calendar-header {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+    }
+    .day-label {
+      padding: 12px;
+      text-align: center;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .calendar-cell {
+      min-height: 120px;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+    }
+    .cell-date { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; }
+    .staff-tag {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 2px;
+    }
+    .staff-tag.off { background: var(--off-day-bg); color: var(--off-day-text); }
+    .staff-tag.work { background: var(--work-day-bg); color: var(--work-day-text); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-card {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header, .modal-footer { padding: 16px 24px; border-bottom: 1px solid var(--border); }
+    .modal-body { padding: 24px; overflow-y: auto; }
+
+    .btn-generate { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; }
+    .btn-generate:hover { background: var(--primary-hover); }
+
+    .summary-section { margin-top: 32px; display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+    .summary-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+    .stats-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    .stats-table th, .stats-table td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    
+    .view-toggles { display: flex; background: #e2e8f0; padding: 4px; border-radius: 8px; }
+    .btn-view { padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; }
+    .btn-view.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+    .day-btn { aspect-ratio: 1; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: white; }
+    .day-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  </style>
 </head>
 <body>
 
 <div class="app-layout">
   <!-- ======== HEADER ======== -->
   <header class="app-header">
-    <div class="brand">
-      <div class="brand-icon">📋</div>
+    <div class="brand flex items-center gap-3">
+      <div class="text-2xl">📋</div>
       <div>
-        <h1>AutoRoster</h1>
-        <span class="brand-sub">客服團隊自動排班系統</span>
+        <h1 class="text-xl font-bold">AutoRoster</h1>
+        <span class="text-xs text-slate-400">客服團隊自動排班系統</span>
       </div>
     </div>
-    <div class="month-selector">
-      <button id="btn-prev-month" title="上個月">‹</button>
-      <span class="month-display" id="month-display">2026 年 4 月</span>
-      <button id="btn-next-month" title="下個月">›</button>
+    <div class="month-selector flex items-center gap-4 bg-slate-100 px-3 py-1 rounded-lg">
+      <button id="btn-prev-month" class="hover:bg-white rounded px-2">‹</button>
+      <span class="font-bold text-sm" id="month-display">2026 年 4 月</span>
+      <button id="btn-next-month" class="hover:bg-white rounded px-2">›</button>
     </div>
   </header>
 
   <!-- ======== SIDEBAR ======== -->
   <aside class="sidebar">
-    <!-- Team Roster -->
-    <div class="section-title"><span class="icon">👥</span> 團隊成員 <button class="btn-edit-team" id="btn-edit-team" title="編輯成員">✏️</button></div>
-    <div class="team-list" id="team-list">
-      <!-- JS renders -->
-    </div>
-
-    <!-- Leave Config -->
-    <div class="section-title"><span class="icon">🗓️</span> 前月尾巴設定</div>
-    <div class="prev-tail-config" style="padding: 0 16px 16px 16px;">
-      <button class="btn-secondary" id="btn-edit-prev-tail" style="width: 100%; padding: 8px; font-size: 0.9em;">設定前 5 日休假</button>
-    </div>
-
-    <div class="section-title"><span class="icon">📅</span> 必排休假日</div>
-    <div class="leave-config" id="leave-config">
-      <!-- JS renders per-member leave day pickers -->
-    </div>
-
-    <!-- Summer Vacation -->
-    <div class="section-title"><span class="icon">🏖️</span> 小暑假設定</div>
-    <div class="summer-config">
-      <div class="summer-toggle">
-        <label for="summer-toggle">🌴 啟用小暑假</label>
-        <input type="checkbox" class="toggle-switch" id="summer-toggle">
+    <div class="section-title">
+      <div class="flex items-center gap-2">
+        <span class="text-indigo-600">👥</span> 團隊成員
       </div>
-      <div class="summer-fields" id="summer-fields">
-        <div class="form-group">
-          <label for="summer-member">休假人員</label>
-          <select id="summer-member"></select>
+      <button id="btn-edit-team" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition">
+        <span class="text-slate-400">✏️</span>
+      </button>
+    </div>
+    
+    <div class="team-list" id="team-list">
+      <!-- JS renders member cards here -->
+    </div>
+
+    <div class="section-title mt-4 border-t pt-4">
+      <div class="flex items-center gap-2"><span class="text-indigo-600">🗓️</span> 前月尾巴設定</div>
+    </div>
+    <div class="px-4 pb-4">
+      <button class="w-full py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-medium transition" id="btn-edit-prev-tail">設定前 5 日休假狀況</button>
+    </div>
+
+    <div class="section-title mt-4 border-t pt-4">
+      <div class="flex items-center gap-2"><span class="text-indigo-600">📅</span> 必排休假日</div>
+    </div>
+    <div id="leave-config" class="pb-6"></div>
+
+    <div class="section-title mt-4 border-t pt-4">
+      <div class="flex items-center gap-2"><span class="text-indigo-600">🏖️</span> 小暑假設定</div>
+    </div>
+    <div class="px-4 pb-6 space-y-3">
+      <div class="flex items-center justify-between">
+        <label for="summer-toggle" class="text-sm font-medium">🌴 啟用小暑假</label>
+        <input type="checkbox" id="summer-toggle" class="w-10 h-5">
+      </div>
+      <div id="summer-fields" class="opacity-50 pointer-events-none space-y-2 bg-slate-50 p-3 rounded-xl">
+        <div class="space-y-1">
+          <label class="text-xs text-slate-400">休假人員</label>
+          <select id="summer-member" class="w-full p-2 border rounded-lg text-sm"></select>
         </div>
-        <div class="form-group">
-          <label for="summer-start">起始日期</label>
-          <input type="number" id="summer-start" min="1" max="25" value="1">
+        <div class="space-y-1">
+          <label class="text-xs text-slate-400">起始日期</label>
+          <input type="number" id="summer-start" min="1" max="25" value="10" class="w-full p-2 border rounded-lg text-sm">
         </div>
-        <div class="form-group" style="pointer-events:none;opacity:0.6">
-          <label>結束日期（自動計算）</label>
-          <input type="text" id="summer-end" readonly value="—">
-        </div>
-        <div class="summer-note" id="summer-note" style="font-size:0.8em;color:var(--text-muted);padding:4px 0;"></div>
+        <div id="summer-note" class="text-xs text-indigo-600 font-medium"></div>
       </div>
     </div>
   </aside>
 
   <!-- ======== MAIN ======== -->
   <main class="main-content">
-    <!-- Monthly Leave Days Config -->
-    <div class="monthly-leave-bar">
-      <div class="monthly-leave-group">
-        <label for="monthly-leave-days">📆 每月休假天數</label>
-        <input type="number" id="monthly-leave-days" min="1" max="20" value="9">
-        <span class="monthly-leave-hint">天（含週末、國定假日，由班長手動輸入）</span>
+    <div class="bg-indigo-600 p-6 rounded-2xl text-white mb-8 flex items-center justify-between shadow-lg shadow-indigo-100">
+      <div>
+        <h2 class="text-lg font-bold">排班參數設定</h2>
+        <p class="text-indigo-100 text-xs">設定每月總休天數，系統將自動平衡每日人力。</p>
+      </div>
+      <div class="flex items-center gap-4 bg-indigo-700/50 p-3 rounded-xl">
+        <label for="monthly-leave-days" class="font-bold text-sm">📆 每月休假</label>
+        <input type="number" id="monthly-leave-days" class="w-16 p-1 bg-white border-none rounded text-center text-indigo-900 font-bold" min="1" max="20" value="9">
+        <span class="text-xs">天</span>
       </div>
     </div>
 
-    <!-- Action Bar -->
-    <div class="action-bar">
-      <div class="action-buttons">
-        <button class="btn-generate" id="btn-generate">
-          🚀 自動排班
-        </button>
-        <button class="btn-copy-schedule" id="btn-copy-schedule">
-          📋 複製班表
-        </button>
+    <div class="flex justify-between items-center mb-6">
+      <div class="flex gap-3">
+        <button class="btn-generate px-8" id="btn-generate">🚀 開始自動排班</button>
+        <button class="px-4 py-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition text-sm font-bold flex items-center gap-2" id="btn-copy-schedule">📋 複製文字</button>
       </div>
-      <div class="view-toggles" id="view-toggles" style="display:none; gap: 8px;">
-        <button class="btn-view active" id="btn-view-calendar">📅 日曆</button>
-        <button class="btn-view" id="btn-view-table">📊 表格</button>
-      </div>
-      <div class="status-pills" id="status-pills">
-        <!-- JS renders after scheduling -->
+      <div class="view-toggles">
+        <button class="btn-view active" id="btn-view-calendar">日曆</button>
+        <button class="btn-view" id="btn-view-table">表格</button>
       </div>
     </div>
 
-    <!-- Calendar -->
-    <div class="calendar-container" id="calendar-container">
+    <!-- Empty State -->
+    <div class="flex flex-col items-center justify-center py-20 text-slate-400" id="empty-state">
+      <div class="text-6xl mb-4 opacity-20">📅</div>
+      <h2 class="text-xl font-bold">尚未產生班表</h2>
+      <p class="text-sm">請調整左側需求後，點擊「開始自動排班」。</p>
+    </div>
+
+    <!-- Calendar View -->
+    <div class="calendar-container hidden" id="calendar-container">
       <div class="calendar-header">
-        <div class="day-label">日</div>
-        <div class="day-label">一</div>
-        <div class="day-label">二</div>
-        <div class="day-label">三</div>
-        <div class="day-label">四</div>
-        <div class="day-label">五</div>
-        <div class="day-label">六</div>
+        <div class="day-label">日</div><div class="day-label">一</div><div class="day-label">二</div><div class="day-label">三</div><div class="day-label">四</div><div class="day-label">五</div><div class="day-label">六</div>
       </div>
-      <div class="calendar-grid" id="calendar-grid">
-        <!-- Empty state before scheduling -->
-      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
     </div>
 
     <!-- Table View -->
-    <div class="table-view-container" id="table-view-container" style="display:none;">
-      <table class="schedule-table">
-        <thead id="st-head"></thead>
+    <div class="table-view-container hidden bg-white rounded-2xl border p-4 shadow-sm" id="table-view-container">
+      <table class="w-full text-xs">
+        <thead id="st-head" class="bg-slate-50"></thead>
         <tbody id="st-body"></tbody>
       </table>
     </div>
 
-    <!-- Empty State (before scheduling) -->
-    <div class="empty-state" id="empty-state">
-      <div class="empty-icon">📅</div>
-      <h2>尚未產生班表</h2>
-      <p>請設定團隊成員的休假需求後，點擊「🚀 自動排班」按鈕產生月班表。</p>
-    </div>
-
-    <!-- Summary (after scheduling) -->
-    <div class="summary-section" id="summary-section" style="display:none;">
-      <!-- Alert Summary -->
+    <!-- Summary -->
+    <div class="summary-section hidden" id="summary-section">
       <div class="summary-card">
-        <h3>⚠️ 警示摘要</h3>
-        <div class="alert-list" id="alert-list"></div>
+        <h3 class="font-bold border-b pb-3 mb-3">⚠️ 警示摘要</h3>
+        <div id="alert-list" class="space-y-1"></div>
       </div>
-      <!-- Person Stats -->
       <div class="summary-card">
-        <h3>📊 人員月統計</h3>
+        <h3 class="font-bold border-b pb-3 mb-3">📊 人員月統計</h3>
         <table class="stats-table">
           <thead>
             <tr>
-              <th>姓名</th>
-              <th>職務</th>
-              <th>效率</th>
-              <th>應休</th>
-              <th>已排</th>
-              <th>剩餘</th>
-              <th>出勤</th>
+              <th>姓名</th><th>效率</th><th>應休</th><th>已排</th><th>狀態</th><th>出勤</th>
             </tr>
           </thead>
           <tbody id="stats-body"></tbody>
@@ -160,76 +363,352 @@
   </main>
 </div>
 
-<!-- ======== TEAM EDITOR MODAL ======== -->
+<!-- MODALS -->
 <div class="modal-overlay" id="team-editor-modal">
   <div class="modal-card">
-    <div class="modal-header">
-      <h2>👥 團隊成員編輯器</h2>
-      <button class="modal-close" id="btn-editor-close" title="關閉">&times;</button>
+    <div class="modal-header flex justify-between">
+      <h2 class="text-xl font-bold">👥 團隊成員編輯器</h2>
+      <button class="modal-close text-2xl" id="btn-editor-close">&times;</button>
     </div>
     <div class="modal-body">
-      <div class="editor-error" id="editor-error"></div>
-      <div class="editor-table-wrap">
-        <table class="editor-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>姓名</th>
-              <th>員工編號</th>
-              <th>職務</th>
-              <th>效率</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="editor-tbody">
-            <!-- JS renders rows -->
-          </tbody>
-        </table>
-      </div>
+      <table class="stats-table w-full">
+        <thead class="bg-slate-50">
+          <tr><th>姓名</th><th>工號</th><th>職務</th><th>效率(%)</th><th>操作</th></tr>
+        </thead>
+        <tbody id="editor-tbody"></tbody>
+      </table>
+      <button class="mt-4 bg-slate-100 hover:bg-slate-200 w-full py-3 rounded-xl font-bold text-indigo-600 transition" id="btn-add-member">+ 新增成員</button>
     </div>
     <div class="modal-footer">
-      <button class="btn-add-member" id="btn-add-member">➕ 新增成員</button>
-      <div class="modal-actions">
-        <button class="btn-modal-cancel" id="btn-editor-cancel">取消</button>
-        <button class="btn-modal-save" id="btn-editor-save">💾 儲存</button>
-      </div>
+      <button id="btn-editor-cancel" class="text-slate-500 font-bold px-4">取消</button>
+      <button id="btn-editor-save" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100">💾 儲存所有變更</button>
     </div>
   </div>
 </div>
 
-<!-- ======== PREV TAIL MODAL ======== -->
 <div class="modal-overlay" id="prev-tail-modal">
-  <div class="modal-card">
+  <div class="modal-card max-w-md">
     <div class="modal-header">
-      <h2>🗓️ 設定前月最後 5 日休假</h2>
-      <button class="modal-close" id="btn-prev-tail-close" title="關閉">&times;</button>
+      <h2 class="text-xl font-bold">🗓️ 設定前月最後 5 日</h2>
     </div>
     <div class="modal-body">
-      <p style="margin-bottom: 12px; font-size: 0.95em; color: var(--text-muted); line-height: 1.5;">
-        請勾選上個月最後 5 天的休假狀況，這將作為本週自動排班「跨月連休檢查」以及「複製班表」出表的依據。
-      </p>
-      <div class="editor-table-wrap">
-        <table class="editor-table">
-          <thead>
-            <tr id="prev-tail-thead">
-              <!-- JS generates last 5 days headers -->
-            </tr>
-          </thead>
-          <tbody id="prev-tail-tbody">
-            <!-- JS renders rows -->
-          </tbody>
-        </table>
-      </div>
+      <p class="text-sm text-slate-500 mb-4">請勾選上個月最後 5 天有休假的人員，以利連休檢查。</p>
+      <table class="stats-table w-full">
+        <thead id="prev-tail-thead"></thead>
+        <tbody id="prev-tail-tbody"></tbody>
+      </table>
     </div>
-    <div class="modal-footer" style="justify-content: flex-end;">
-      <div class="modal-actions">
-        <button class="btn-modal-cancel" id="btn-prev-tail-cancel">取消</button>
-        <button class="btn-modal-save" id="btn-prev-tail-save">💾 儲存</button>
-      </div>
+    <div class="modal-footer">
+      <button id="btn-prev-tail-cancel" class="text-slate-400">取消</button>
+      <button id="btn-prev-tail-save" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">儲存</button>
     </div>
   </div>
 </div>
 
-<script src="app.js"></script>
+<script>
+/** * AutoRoster - Core Logic 
+ */
+let state = {
+  currentDate: new Date(2026, 3, 1), 
+  members: [
+    { id: '1', name: '班長', sn: 'CS001', role: '班長', efficiency: 100, requiredLeaves: [], prevTail: [false, false, false, false, false] },
+    { id: '2', name: '副班長', sn: 'CS002', role: '副班長', efficiency: 95, requiredLeaves: [], prevTail: [false, false, false, false, false] },
+    { id: '3', name: '組員A', sn: 'CS003', role: '組員', efficiency: 92, requiredLeaves: [], prevTail: [false, false, false, false, false] },
+    { id: '4', name: '組員B', sn: 'CS004', role: '組員', efficiency: 91, requiredLeaves: [], prevTail: [false, false, false, false, false] },
+    { id: '5', name: '組員C', sn: 'CS005', role: '組員', efficiency: 75, requiredLeaves: [], prevTail: [false, false, false, false, false] },
+    { id: '6', name: '組員D', sn: 'CS006', role: '組員', efficiency: 70, requiredLeaves: [], prevTail: [false, false, false, false, false] }
+  ],
+  monthlyLeaveDays: 9,
+  summer: { enabled: false, memberId: '3', startDay: 10, length: 5 },
+  schedule: null,
+};
+
+const monthDisplay = document.getElementById('month-display');
+const teamList = document.getElementById('team-list');
+const leaveConfig = document.getElementById('leave-config');
+const summerMemberSelect = document.getElementById('summer-member');
+const summerFields = document.getElementById('summer-fields');
+const summerToggle = document.getElementById('summer-toggle');
+const monthlyLeaveInput = document.getElementById('monthly-leave-days');
+
+function init() {
+  renderHeader();
+  renderSidebar();
+  setupEventListeners();
+}
+
+function renderHeader() {
+  const year = state.currentDate.getFullYear();
+  const month = state.currentDate.getMonth() + 1;
+  monthDisplay.innerText = `${year} 年 ${month} 月`;
+}
+
+// --- 更新成員介面 (仿照截圖) ---
+function renderSidebar() {
+  teamList.innerHTML = state.members.map(m => {
+    // 判斷頭像顏色與文字
+    let avatarClass = 'avatar-member';
+    let roleTagClass = 'role-member';
+    let roleInitial = m.role.charAt(0);
+
+    if(m.role === '班長') {
+      avatarClass = 'avatar-leader';
+      roleTagClass = 'role-leader';
+    } else if (m.role === '副班長') {
+      avatarClass = 'avatar-deputy';
+      roleTagClass = 'role-deputy';
+    }
+
+    // 判斷效率標籤 (根據截圖有 快/慢 分別)
+    const isFast = m.efficiency >= 90;
+    const speedTag = isFast 
+      ? `<div class="tag-speed speed-fast">⚡ 快</div>` 
+      : `<div class="tag-speed speed-slow">🐢 慢</div>`;
+
+    return `
+      <div class="member-card shadow-sm hover:shadow-md transition cursor-default">
+        <div class="member-avatar ${avatarClass}">${roleInitial}</div>
+        <div class="member-info">
+          <div class="member-name">${m.name}</div>
+          <div class="member-tags">
+            <div class="tag-role ${roleTagClass}">${m.role}</div>
+            ${speedTag}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 渲染休假設定部分
+  const daysInMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0).getDate();
+  leaveConfig.innerHTML = state.members.map(m => `
+    <div class="px-4 py-3 border-b border-slate-50 last:border-0">
+      <div class="text-xs font-bold text-slate-500 mb-2">${m.name}</div>
+      <div class="grid grid-cols-7 gap-1">
+        ${Array.from({length: daysInMonth}, (_, i) => {
+          const day = i + 1;
+          const isActive = m.requiredLeaves.includes(day);
+          return `<button class="day-btn h-8 rounded-lg text-xs transition ${isActive ? 'active' : 'hover:bg-slate-100'}" data-mid="${m.id}" data-day="${day}">${day}</button>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  summerMemberSelect.innerHTML = state.members.map(m => `<option value="${m.id}" ${state.summer.memberId === m.id ? 'selected' : ''}>${m.name}</option>`).join('');
+  updateSummerInfo();
+}
+
+function updateSummerInfo() {
+  if (state.summer.enabled) {
+    summerFields.style.opacity = '1';
+    summerFields.style.pointerEvents = 'auto';
+    const end = state.summer.startDay + state.summer.length - 1;
+    document.getElementById('summer-note').innerText = `✅ 排定連休：${state.summer.startDay} ~ ${end} 日`;
+  } else {
+    summerFields.style.opacity = '0.5';
+    summerFields.style.pointerEvents = 'none';
+    document.getElementById('summer-note').innerText = '';
+  }
+}
+
+// --- 排班演算法 ---
+function generateSchedule() {
+  const daysInMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0).getDate();
+  const schedule = Array.from({length: daysInMonth}, (_, i) => ({ day: i + 1, off: [], work: [] }));
+  const memberOffCounts = {};
+  state.members.forEach(m => memberOffCounts[m.id] = 0);
+
+  // 1. 必排休
+  state.members.forEach(m => {
+    m.requiredLeaves.forEach(d => {
+      if (d <= daysInMonth) { schedule[d-1].off.push(m.id); memberOffCounts[m.id]++; }
+    });
+  });
+
+  // 2. 小暑假
+  if (state.summer.enabled) {
+    const mId = state.summer.memberId;
+    for (let i = 0; i < state.summer.length; i++) {
+      const d = state.summer.startDay + i;
+      if (d <= daysInMonth && !schedule[d-1].off.includes(mId)) {
+        schedule[d-1].off.push(mId); memberOffCounts[mId]++;
+      }
+    }
+  }
+
+  // 3. 分配剩餘天數
+  const targetOff = state.monthlyLeaveDays;
+  let totalRequired = state.members.length * targetOff;
+  let currentTotalOff = Object.values(memberOffCounts).reduce((a, b) => a + b, 0);
+  let maxLoop = 1000;
+
+  while (currentTotalOff < totalRequired && maxLoop > 0) {
+    maxLoop--;
+    const sortedMembers = [...state.members].filter(m => memberOffCounts[m.id] < targetOff)
+      .sort((a, b) => (targetOff - memberOffCounts[b.id]) - (targetOff - memberOffCounts[a.id]));
+    if (sortedMembers.length === 0) break;
+    const member = sortedMembers[0];
+    const availableDays = schedule.filter(s => !s.off.includes(member.id)).sort((a, b) => a.off.length - b.off.length);
+    for (let dayObj of availableDays) {
+      if (canTakeLeave(member, dayObj.day, schedule)) {
+        dayObj.off.push(member.id); memberOffCounts[member.id]++; currentTotalOff++;
+        break;
+      }
+    }
+  }
+
+  schedule.forEach(s => state.members.forEach(m => { if (!s.off.includes(m.id)) s.work.push(m.id); }));
+  state.schedule = schedule;
+  renderSchedule();
+}
+
+function canTakeLeave(member, day, schedule) {
+  if (schedule[day-1].off.length >= state.members.length - 2) return false;
+  return true;
+}
+
+function renderSchedule() {
+  document.getElementById('empty-state').classList.add('hidden');
+  document.getElementById('calendar-container').classList.remove('hidden');
+  document.getElementById('summary-section').classList.remove('hidden');
+  const grid = document.getElementById('calendar-grid');
+  const firstDay = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1).getDay();
+  grid.innerHTML = '';
+  for(let i=0; i<firstDay; i++) grid.innerHTML += '<div class="calendar-cell bg-slate-50"></div>';
+  state.schedule.forEach(s => {
+    const cell = document.createElement('div');
+    cell.className = 'calendar-cell';
+    cell.innerHTML = `
+      <div class="cell-date">${s.day}</div>
+      <div class="flex flex-col gap-1">
+        ${s.off.map(id => `<div class="staff-tag off font-bold">休: ${getMember(id).name}</div>`).join('')}
+        ${s.work.map(id => `<div class="staff-tag work opacity-60">${getMember(id).name}</div>`).join('')}
+      </div>`;
+    grid.appendChild(cell);
+  });
+  renderStats();
+  renderTable();
+}
+
+function renderStats() {
+  const tbody = document.getElementById('stats-body');
+  const alertList = document.getElementById('alert-list');
+  alertList.innerHTML = '';
+  tbody.innerHTML = state.members.map(m => {
+    const offCount = state.schedule.filter(s => s.off.includes(m.id)).length;
+    const diff = state.monthlyLeaveDays - offCount;
+    if (diff !== 0) alertList.innerHTML += `<div class="text-xs text-red-500 font-medium">⚠️ ${m.name} 休假不足：差 ${diff} 天</div>`;
+    return `<tr><td>${m.name}</td><td>${m.efficiency}%</td><td>${state.monthlyLeaveDays}</td><td class="${diff !== 0 ? 'text-red-500 font-bold' : ''}">${offCount}</td><td>${diff === 0 ? '✅ 達標' : '❌ 未休滿'}</td><td>${state.schedule.length - offCount}</td></tr>`;
+  }).join('');
+  if (alertList.innerHTML === '') alertList.innerHTML = '<div class="text-green-600 text-xs">✅ 班表休假天數全數達成</div>';
+}
+
+function renderTable() {
+  const head = document.getElementById('st-head');
+  const body = document.getElementById('st-body');
+  head.innerHTML = `<tr><th class="p-2 border">成員</th>${state.schedule.map(s => `<th class="border text-center">${s.day}</th>`).join('')}</tr>`;
+  body.innerHTML = state.members.map(m => `<tr><td class="p-2 border font-bold">${m.name}</td>${state.schedule.map(s => {
+    const isOff = s.off.includes(m.id);
+    return `<td class="border text-center ${isOff ? 'bg-red-50 text-red-600 font-bold' : ''}">${isOff ? '休' : '●'}</td>`;
+  }).join('')}</tr>`).join('');
+}
+
+function setupEventListeners() {
+  monthlyLeaveInput.oninput = (e) => state.monthlyLeaveDays = parseInt(e.target.value) || 0;
+  document.getElementById('btn-prev-month').onclick = () => { state.currentDate.setMonth(state.currentDate.getMonth() - 1); renderHeader(); renderSidebar(); };
+  document.getElementById('btn-next-month').onclick = () => { state.currentDate.setMonth(state.currentDate.getMonth() + 1); renderHeader(); renderSidebar(); };
+  leaveConfig.onclick = (e) => {
+    if (e.target.classList.contains('day-btn')) {
+      const mid = e.target.dataset.mid;
+      const day = parseInt(e.target.dataset.day);
+      const member = getMember(mid);
+      if (member.requiredLeaves.includes(day)) member.requiredLeaves = member.requiredLeaves.filter(d => d !== day);
+      else member.requiredLeaves.push(day);
+      renderSidebar();
+    }
+  };
+  summerToggle.onchange = (e) => { state.summer.enabled = e.target.checked; updateSummerInfo(); };
+  summerMemberSelect.onchange = (e) => state.summer.memberId = e.target.value;
+  document.getElementById('summer-start').oninput = (e) => { state.summer.startDay = parseInt(e.target.value) || 1; updateSummerInfo(); };
+  document.getElementById('btn-generate').onclick = generateSchedule;
+  document.getElementById('btn-view-calendar').onclick = () => switchView('calendar');
+  document.getElementById('btn-view-table').onclick = () => switchView('table');
+  document.getElementById('btn-copy-schedule').onclick = copyToClipboard;
+
+  const editorModal = document.getElementById('team-editor-modal');
+  document.getElementById('btn-edit-team').onclick = () => { renderEditorTable(); editorModal.classList.add('open'); };
+  document.getElementById('btn-editor-close').onclick = () => editorModal.classList.remove('open');
+  document.getElementById('btn-editor-save').onclick = () => {
+    const rows = document.querySelectorAll('#editor-tbody tr');
+    state.members = Array.from(rows).map(row => ({
+      id: row.dataset.id,
+      name: row.querySelector('.in-name').value,
+      sn: row.querySelector('.in-sn').value,
+      role: row.querySelector('.in-role').value,
+      efficiency: parseInt(row.querySelector('.in-eff').value) || 0,
+      requiredLeaves: getMember(row.dataset.id).requiredLeaves || [],
+      prevTail: getMember(row.dataset.id).prevTail || [false,false,false,false,false]
+    }));
+    renderSidebar();
+    editorModal.classList.remove('open');
+  };
+  document.getElementById('btn-add-member').onclick = () => {
+    state.members.push({ id: Date.now().toString(), name: '新成員', sn: 'CS000', role: '組員', efficiency: 80, requiredLeaves: [], prevTail: [false,false,false,false,false] });
+    renderEditorTable();
+  };
+}
+
+function switchView(view) {
+  const cal = document.getElementById('calendar-container');
+  const tbl = document.getElementById('table-view-container');
+  const btnCal = document.getElementById('btn-view-calendar');
+  const btnTbl = document.getElementById('btn-view-table');
+  if (view === 'calendar') {
+    cal.classList.remove('hidden'); tbl.classList.add('hidden');
+    btnCal.classList.add('active'); btnTbl.classList.remove('active');
+  } else {
+    cal.classList.add('hidden'); tbl.classList.remove('hidden');
+    btnCal.classList.remove('active'); btnTbl.classList.add('active');
+  }
+}
+
+function renderEditorTable() {
+  const tbody = document.getElementById('editor-tbody');
+  tbody.innerHTML = state.members.map(m => `
+    <tr data-id="${m.id}">
+      <td><input type="text" class="in-name w-24 p-2 border rounded-lg" value="${m.name}"></td>
+      <td><input type="text" class="in-sn w-20 p-2 border rounded-lg" value="${m.sn}"></td>
+      <td>
+        <select class="in-role p-2 border rounded-lg">
+          <option ${m.role === '班長' ? 'selected' : ''}>班長</option>
+          <option ${m.role === '副班長' ? 'selected' : ''}>副班長</option>
+          <option ${m.role === '組員' ? 'selected' : ''}>組員</option>
+        </select>
+      </td>
+      <td><input type="number" class="in-eff w-16 p-2 border rounded-lg" value="${m.efficiency}"></td>
+      <td><button class="text-red-500 font-bold" onclick="deleteMember('${m.id}')">移除</button></td>
+    </tr>`).join('');
+}
+
+function deleteMember(id) { state.members = state.members.filter(m => m.id !== id); renderEditorTable(); }
+function getMember(id) { return state.members.find(m => m.id === id); }
+function copyToClipboard() {
+  if (!state.schedule) return;
+  let text = `【AutoRoster 班表 - ${state.currentDate.getFullYear()}/${state.currentDate.getMonth()+1}】\n\n`;
+  state.schedule.forEach(s => {
+    const offNames = s.off.map(id => getMember(id).name).join(', ');
+    text += `${s.day}日: 休 (${offNames || '無'})\n`;
+  });
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  document.body.appendChild(textarea); textarea.select();
+  document.execCommand('copy'); document.body.removeChild(textarea);
+  const btn = document.getElementById('btn-copy-schedule');
+  const oldText = btn.innerHTML; btn.innerHTML = '✅ 已複製！';
+  setTimeout(() => btn.innerHTML = oldText, 2000);
+}
+
+init();
+</script>
 </body>
 </html>
