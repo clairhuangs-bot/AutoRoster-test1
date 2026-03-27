@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AutoRoster — 客服團隊自動排班系統</title>
-  <meta name="description" content="客服團隊自動排班工具：一鍵產出月班表，戰力均衡、連班控管、小暑假人力調配全自動。">
+  <meta name="description" content="客服團隊自動排班工具：一鍵產出月班表，戰力均衡、將帥防撞、缺人預警全自動。">
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
@@ -29,29 +29,27 @@
   <!-- ======== SIDEBAR ======== -->
   <aside class="sidebar">
     <!-- Team Roster -->
-    <div class="section-title">
-      <span class="icon">👥</span> 團隊成員 
-      <button class="btn-edit-team" id="btn-edit-team" title="編輯成員">✏️</button>
-    </div>
+    <div class="section-title"><span class="icon">👥</span> 團隊成員 <button class="btn-edit-team" id="btn-edit-team" title="編輯成員">✏️</button></div>
     <div class="team-list" id="team-list">
-      <!-- 由 app.js 自動渲染 -->
+      <!-- JS renders -->
     </div>
 
     <!-- Leave Config -->
-    <div class="section-title">
-      <span class="icon">📅</span> 必排休假日
+    <div class="section-title"><span class="icon">🗓️</span> 前月尾巴設定</div>
+    <div class="prev-tail-config" style="padding: 0 16px 16px 16px;">
+      <button class="btn-secondary" id="btn-edit-prev-tail" style="width: 100%; padding: 8px; font-size: 0.9em;">設定前 5 日休假</button>
     </div>
-    <div class="leave-config" id="leave-config" style="padding: 0 16px 16px 16px;">
-      <!-- 由 app.js 自動渲染每位成員的休假輸入框 -->
+
+    <div class="section-title"><span class="icon">📅</span> 必排休假日</div>
+    <div class="leave-config" id="leave-config">
+      <!-- JS renders per-member leave day pickers -->
     </div>
 
     <!-- Summer Vacation -->
-    <div class="section-title">
-      <span class="icon">🏖️</span> 小暑假設定 (7天長假)
-    </div>
+    <div class="section-title"><span class="icon">🏖️</span> 小暑假設定</div>
     <div class="summer-config">
       <div class="summer-toggle">
-        <label for="summer-toggle">🌴 啟用小暑假配置</label>
+        <label for="summer-toggle">🌴 啟用小暑假</label>
         <input type="checkbox" class="toggle-switch" id="summer-toggle">
       </div>
       <div class="summer-fields" id="summer-fields">
@@ -60,36 +58,49 @@
           <select id="summer-member"></select>
         </div>
         <div class="form-group">
-          <label for="summer-start">起始日期 (日)</label>
+          <label for="summer-start">起始日期</label>
           <input type="number" id="summer-start" min="1" max="25" value="1">
         </div>
         <div class="form-group" style="pointer-events:none;opacity:0.6">
-          <label>結束日期 (自動計算)</label>
+          <label>結束日期（自動計算）</label>
           <input type="text" id="summer-end" readonly value="—">
         </div>
+        <div class="summer-note" id="summer-note" style="font-size:0.8em;color:var(--text-muted);padding:4px 0;"></div>
       </div>
     </div>
   </aside>
 
   <!-- ======== MAIN ======== -->
   <main class="main-content">
+    <!-- Monthly Leave Days Config -->
+    <div class="monthly-leave-bar">
+      <div class="monthly-leave-group">
+        <label for="monthly-leave-days">📆 每月休假天數</label>
+        <input type="number" id="monthly-leave-days" min="1" max="20" value="9">
+        <span class="monthly-leave-hint">天（含週末、國定假日，由班長手動輸入）</span>
+      </div>
+    </div>
+
     <!-- Action Bar -->
     <div class="action-bar">
       <div class="action-buttons">
         <button class="btn-generate" id="btn-generate">
-          🚀 產出自動排班
+          🚀 自動排班
         </button>
         <button class="btn-copy-schedule" id="btn-copy-schedule">
-          📋 複製班表文字
+          📋 複製班表
         </button>
       </div>
       <div class="view-toggles" id="view-toggles" style="display:none; gap: 8px;">
         <button class="btn-view active" id="btn-view-calendar">📅 日曆</button>
         <button class="btn-view" id="btn-view-table">📊 表格</button>
       </div>
+      <div class="status-pills" id="status-pills">
+        <!-- JS renders after scheduling -->
+      </div>
     </div>
 
-    <!-- Calendar View -->
+    <!-- Calendar -->
     <div class="calendar-container" id="calendar-container">
       <div class="calendar-header">
         <div class="day-label">日</div>
@@ -101,34 +112,45 @@
         <div class="day-label">六</div>
       </div>
       <div class="calendar-grid" id="calendar-grid">
-        <!-- 排班結果會渲染在此 -->
+        <!-- Empty state before scheduling -->
       </div>
     </div>
 
-    <!-- Empty State -->
+    <!-- Table View -->
+    <div class="table-view-container" id="table-view-container" style="display:none;">
+      <table class="schedule-table">
+        <thead id="st-head"></thead>
+        <tbody id="st-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Empty State (before scheduling) -->
     <div class="empty-state" id="empty-state">
       <div class="empty-icon">📅</div>
       <h2>尚未產生班表</h2>
-      <p>請於左側設定成員休假需求與小暑假資訊後，點擊「🚀 產出自動排班」。</p>
+      <p>請設定團隊成員的休假需求後，點擊「🚀 自動排班」按鈕產生月班表。</p>
     </div>
 
     <!-- Summary (after scheduling) -->
-    <div class="summary-section" id="summary-section" style="display:none; margin-top: 24px;">
+    <div class="summary-section" id="summary-section" style="display:none;">
+      <!-- Alert Summary -->
       <div class="summary-card">
-        <h3 style="margin-bottom: 12px; color: var(--primary);">⚠️ 規則走查 (Walkthrough) 警示</h3>
+        <h3>⚠️ 警示摘要</h3>
         <div class="alert-list" id="alert-list"></div>
       </div>
-      
-      <div class="summary-card" style="margin-top: 16px;">
-        <h3 style="margin-bottom: 12px;">📊 人員月出勤統計</h3>
+      <!-- Person Stats -->
+      <div class="summary-card">
+        <h3>📊 人員月統計</h3>
         <table class="stats-table">
           <thead>
             <tr>
               <th>姓名</th>
               <th>職務</th>
               <th>效率</th>
-              <th>出勤天數</th>
-              <th>休假天數</th>
+              <th>應休</th>
+              <th>已排</th>
+              <th>剩餘</th>
+              <th>出勤</th>
             </tr>
           </thead>
           <tbody id="stats-body"></tbody>
@@ -138,31 +160,72 @@
   </main>
 </div>
 
-<!-- ======== TEAM EDITOR MODAL (編輯團隊名單) ======== -->
+<!-- ======== TEAM EDITOR MODAL ======== -->
 <div class="modal-overlay" id="team-editor-modal">
   <div class="modal-card">
     <div class="modal-header">
-      <h2>👥 團隊成員管理</h2>
-      <button class="modal-close" id="btn-editor-close">&times;</button>
+      <h2>👥 團隊成員編輯器</h2>
+      <button class="modal-close" id="btn-editor-close" title="關閉">&times;</button>
     </div>
     <div class="modal-body">
-      <p style="margin-bottom: 12px; color: var(--text-muted);">在此定義團隊職稱，系統將據此分配「1值班+2組員」的人力配比。</p>
-      <table class="editor-table">
-        <thead>
-          <tr>
-            <th>姓名</th>
-            <th>職務 (Leader/Deputy/Member)</th>
-            <th>效率</th>
-          </tr>
-        </thead>
-        <tbody id="editor-tbody">
-          <!-- 由 JS 渲染 -->
-        </tbody>
-      </table>
+      <div class="editor-error" id="editor-error"></div>
+      <div class="editor-table-wrap">
+        <table class="editor-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>姓名</th>
+              <th>員工編號</th>
+              <th>職務</th>
+              <th>效率</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="editor-tbody">
+            <!-- JS renders rows -->
+          </tbody>
+        </table>
+      </div>
     </div>
     <div class="modal-footer">
-      <div style="font-size: 12px; color: var(--text-muted);">* Leader/Deputy 會被視為「值班者」</div>
-      <button class="btn-modal-save" id="btn-editor-save">💾 儲存名單</button>
+      <button class="btn-add-member" id="btn-add-member">➕ 新增成員</button>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="btn-editor-cancel">取消</button>
+        <button class="btn-modal-save" id="btn-editor-save">💾 儲存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== PREV TAIL MODAL ======== -->
+<div class="modal-overlay" id="prev-tail-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2>🗓️ 設定前月最後 5 日休假</h2>
+      <button class="modal-close" id="btn-prev-tail-close" title="關閉">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom: 12px; font-size: 0.95em; color: var(--text-muted); line-height: 1.5;">
+        請勾選上個月最後 5 天的休假狀況，這將作為本週自動排班「跨月連休檢查」以及「複製班表」出表的依據。
+      </p>
+      <div class="editor-table-wrap">
+        <table class="editor-table">
+          <thead>
+            <tr id="prev-tail-thead">
+              <!-- JS generates last 5 days headers -->
+            </tr>
+          </thead>
+          <tbody id="prev-tail-tbody">
+            <!-- JS renders rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content: flex-end;">
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" id="btn-prev-tail-cancel">取消</button>
+        <button class="btn-modal-save" id="btn-prev-tail-save">💾 儲存</button>
+      </div>
     </div>
   </div>
 </div>
