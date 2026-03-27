@@ -18,10 +18,10 @@
       --work-day-bg: #f0fdf4;
       --work-day-text: #166534;
       
-      /* Role Colors from Image */
-      --color-leader: #f59e0b;    /* 班長 - 橘色 */
-      --color-deputy: #3b82f6;    /* 副班長 - 藍色 */
-      --color-member: #8b5cf6;    /* 組員 - 紫色 */
+      /* Role Colors */
+      --color-leader: #f59e0b;
+      --color-deputy: #3b82f6;
+      --color-member: #8b5cf6;
     }
 
     body {
@@ -66,7 +66,7 @@
       align-items: center;
     }
 
-    /* --- Member Card Styles (From Image) --- */
+    /* --- Member Card Styles --- */
     .team-list {
       padding: 0 16px;
       display: flex;
@@ -82,7 +82,6 @@
       display: flex;
       align-items: center;
       gap: 16px;
-      transition: transform 0.1s;
     }
 
     .member-avatar {
@@ -101,24 +100,6 @@
     .avatar-leader { background-color: var(--color-leader); }
     .avatar-deputy { background-color: var(--color-deputy); }
     .avatar-member { background-color: var(--color-member); }
-
-    .member-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .member-name {
-      font-size: 1.125rem;
-      font-weight: 700;
-      color: #1e293b;
-    }
-
-    .member-tags {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
 
     .tag-role {
       font-size: 0.75rem;
@@ -142,8 +123,7 @@
     .speed-fast { background: #f0fdf4; color: #166534; }
     .speed-slow { background: #fffbeb; color: #92400e; }
 
-    /* -------------------------------------- */
-
+    /* --- Calendar Views --- */
     .main-content {
       padding: 24px;
       overflow-y: auto;
@@ -155,7 +135,7 @@
       border: 1px solid var(--border);
       overflow: hidden;
     }
-    .calendar-header {
+    .calendar-header, .leave-days-grid-header {
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       background: #f8fafc;
@@ -188,6 +168,7 @@
     .staff-tag.off { background: var(--off-day-bg); color: var(--off-day-text); }
     .staff-tag.work { background: var(--work-day-bg); color: var(--work-day-text); }
 
+    /* Modal */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -213,17 +194,13 @@
     .btn-generate { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; }
     .btn-generate:hover { background: var(--primary-hover); }
 
-    .summary-section { margin-top: 32px; display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
-    .summary-card { background: white; padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
-    .stats-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-    .stats-table th, .stats-table td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
-    
     .view-toggles { display: flex; background: #e2e8f0; padding: 4px; border-radius: 8px; }
     .btn-view { padding: 6px 12px; border-radius: 6px; font-size: 0.875rem; }
     .btn-view.active { background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-    .day-btn { aspect-ratio: 1; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: white; }
+    .day-btn { aspect-ratio: 1; font-size: 0.7rem; border: 1px solid var(--border); border-radius: 6px; background: white; }
     .day-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .day-empty { aspect-ratio: 1; border: 1px solid transparent; }
   </style>
 </head>
 <body>
@@ -248,17 +225,10 @@
   <!-- ======== SIDEBAR ======== -->
   <aside class="sidebar">
     <div class="section-title">
-      <div class="flex items-center gap-2">
-        <span class="text-indigo-600">👥</span> 團隊成員
-      </div>
-      <button id="btn-edit-team" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition">
-        <span class="text-slate-400">✏️</span>
-      </button>
+      <div class="flex items-center gap-2"><span class="text-indigo-600">👥</span> 團隊成員</div>
+      <button id="btn-edit-team" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition"><span class="text-slate-400">✏️</span></button>
     </div>
-    
-    <div class="team-list" id="team-list">
-      <!-- JS renders member cards here -->
-    </div>
+    <div class="team-list" id="team-list"></div>
 
     <div class="section-title mt-4 border-t pt-4">
       <div class="flex items-center gap-2"><span class="text-indigo-600">🗓️</span> 前月尾巴設定</div>
@@ -299,7 +269,7 @@
     <div class="bg-indigo-600 p-6 rounded-2xl text-white mb-8 flex items-center justify-between shadow-lg shadow-indigo-100">
       <div>
         <h2 class="text-lg font-bold">排班參數設定</h2>
-        <p class="text-indigo-100 text-xs">設定每月總休天數，系統將自動平衡每日人力。</p>
+        <p class="text-indigo-100 text-xs">系統將依照天數自動產出戰力均衡的班表。</p>
       </div>
       <div class="flex items-center gap-4 bg-indigo-700/50 p-3 rounded-xl">
         <label for="monthly-leave-days" class="font-bold text-sm">📆 每月休假</label>
@@ -323,7 +293,6 @@
     <div class="flex flex-col items-center justify-center py-20 text-slate-400" id="empty-state">
       <div class="text-6xl mb-4 opacity-20">📅</div>
       <h2 class="text-xl font-bold">尚未產生班表</h2>
-      <p class="text-sm">請調整左側需求後，點擊「開始自動排班」。</p>
     </div>
 
     <!-- Calendar View -->
@@ -335,7 +304,7 @@
     </div>
 
     <!-- Table View -->
-    <div class="table-view-container hidden bg-white rounded-2xl border p-4 shadow-sm" id="table-view-container">
+    <div class="table-view-container hidden bg-white rounded-2xl border p-4 shadow-sm overflow-x-auto" id="table-view-container">
       <table class="w-full text-xs">
         <thead id="st-head" class="bg-slate-50"></thead>
         <tbody id="st-body"></tbody>
@@ -350,12 +319,8 @@
       </div>
       <div class="summary-card">
         <h3 class="font-bold border-b pb-3 mb-3">📊 人員月統計</h3>
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th>姓名</th><th>效率</th><th>應休</th><th>已排</th><th>狀態</th><th>出勤</th>
-            </tr>
-          </thead>
+        <table class="w-full text-left text-xs">
+          <thead><tr><th class="py-2">姓名</th><th>效率</th><th>應休</th><th>已排</th><th>出勤</th></tr></thead>
           <tbody id="stats-body"></tbody>
         </table>
       </div>
@@ -371,43 +336,32 @@
       <button class="modal-close text-2xl" id="btn-editor-close">&times;</button>
     </div>
     <div class="modal-body">
-      <table class="stats-table w-full">
-        <thead class="bg-slate-50">
-          <tr><th>姓名</th><th>工號</th><th>職務</th><th>效率(%)</th><th>操作</th></tr>
-        </thead>
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50"><tr><th class="p-2">姓名</th><th>工號</th><th>職務</th><th>效率(%)</th><th>操作</th></tr></thead>
         <tbody id="editor-tbody"></tbody>
       </table>
       <button class="mt-4 bg-slate-100 hover:bg-slate-200 w-full py-3 rounded-xl font-bold text-indigo-600 transition" id="btn-add-member">+ 新增成員</button>
     </div>
-    <div class="modal-footer">
-      <button id="btn-editor-cancel" class="text-slate-500 font-bold px-4">取消</button>
-      <button id="btn-editor-save" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100">💾 儲存所有變更</button>
-    </div>
+    <div class="modal-footer"><button id="btn-editor-cancel" class="text-slate-500 font-bold px-4">取消</button><button id="btn-editor-save" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">💾 儲存</button></div>
   </div>
 </div>
 
 <div class="modal-overlay" id="prev-tail-modal">
-  <div class="modal-card max-w-md">
-    <div class="modal-header">
-      <h2 class="text-xl font-bold">🗓️ 設定前月最後 5 日</h2>
-    </div>
-    <div class="modal-body">
-      <p class="text-sm text-slate-500 mb-4">請勾選上個月最後 5 天有休假的人員，以利連休檢查。</p>
-      <table class="stats-table w-full">
-        <thead id="prev-tail-thead"></thead>
+  <div class="modal-card max-w-lg">
+    <div class="modal-header"><h2 class="text-xl font-bold">🗓️ 設定前月最後 5 日</h2></div>
+    <div class="modal-body overflow-x-auto">
+      <p class="text-sm text-slate-500 mb-4">勾選人員在上月倒數 5 天的休假狀況：</p>
+      <table class="w-full text-left text-xs border-collapse">
+        <thead class="bg-slate-50"><tr><th class="p-2 border">姓名</th><th class="border text-center">T-4</th><th class="border text-center">T-3</th><th class="border text-center">T-2</th><th class="border text-center">T-1</th><th class="border text-center">T-0</th></tr></thead>
         <tbody id="prev-tail-tbody"></tbody>
       </table>
     </div>
-    <div class="modal-footer">
-      <button id="btn-prev-tail-cancel" class="text-slate-400">取消</button>
-      <button id="btn-prev-tail-save" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">儲存</button>
-    </div>
+    <div class="modal-footer"><button id="btn-prev-tail-cancel" class="text-slate-400 font-bold">取消</button><button id="btn-prev-tail-save" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold">💾 儲存設定</button></div>
   </div>
 </div>
 
 <script>
-/** * AutoRoster - Core Logic 
- */
+/** * AutoRoster - Core Logic */
 let state = {
   currentDate: new Date(2026, 3, 1), 
   members: [
@@ -415,21 +369,12 @@ let state = {
     { id: '2', name: '副班長', sn: 'CS002', role: '副班長', efficiency: 95, requiredLeaves: [], prevTail: [false, false, false, false, false] },
     { id: '3', name: '組員A', sn: 'CS003', role: '組員', efficiency: 92, requiredLeaves: [], prevTail: [false, false, false, false, false] },
     { id: '4', name: '組員B', sn: 'CS004', role: '組員', efficiency: 91, requiredLeaves: [], prevTail: [false, false, false, false, false] },
-    { id: '5', name: '組員C', sn: 'CS005', role: '組員', efficiency: 75, requiredLeaves: [], prevTail: [false, false, false, false, false] },
-    { id: '6', name: '組員D', sn: 'CS006', role: '組員', efficiency: 70, requiredLeaves: [], prevTail: [false, false, false, false, false] }
+    { id: '5', name: '組員C', sn: 'CS005', role: '組員', efficiency: 75, requiredLeaves: [], prevTail: [false, false, false, false, false] }
   ],
   monthlyLeaveDays: 9,
   summer: { enabled: false, memberId: '3', startDay: 10, length: 5 },
   schedule: null,
 };
-
-const monthDisplay = document.getElementById('month-display');
-const teamList = document.getElementById('team-list');
-const leaveConfig = document.getElementById('leave-config');
-const summerMemberSelect = document.getElementById('summer-member');
-const summerFields = document.getElementById('summer-fields');
-const summerToggle = document.getElementById('summer-toggle');
-const monthlyLeaveInput = document.getElementById('monthly-leave-days');
 
 function init() {
   renderHeader();
@@ -438,133 +383,101 @@ function init() {
 }
 
 function renderHeader() {
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth() + 1;
-  monthDisplay.innerText = `${year} 年 ${month} 月`;
+  const monthDisplay = document.getElementById('month-display');
+  if (monthDisplay) {
+    monthDisplay.innerText = `${state.currentDate.getFullYear()} 年 ${state.currentDate.getMonth() + 1} 月`;
+  }
 }
 
-// --- 更新成員介面 (仿照截圖) ---
 function renderSidebar() {
-  teamList.innerHTML = state.members.map(m => {
-    // 判斷頭像顏色與文字
-    let avatarClass = 'avatar-member';
-    let roleTagClass = 'role-member';
-    let roleInitial = m.role.charAt(0);
+  const teamList = document.getElementById('team-list');
+  const leaveConfig = document.getElementById('leave-config');
+  const summerMemberSelect = document.getElementById('summer-member');
 
-    if(m.role === '班長') {
-      avatarClass = 'avatar-leader';
-      roleTagClass = 'role-leader';
-    } else if (m.role === '副班長') {
-      avatarClass = 'avatar-deputy';
-      roleTagClass = 'role-deputy';
-    }
-
-    // 判斷效率標籤 (根據截圖有 快/慢 分別)
-    const isFast = m.efficiency >= 90;
-    const speedTag = isFast 
-      ? `<div class="tag-speed speed-fast">⚡ 快</div>` 
-      : `<div class="tag-speed speed-slow">🐢 慢</div>`;
-
-    return `
-      <div class="member-card shadow-sm hover:shadow-md transition cursor-default">
-        <div class="member-avatar ${avatarClass}">${roleInitial}</div>
-        <div class="member-info">
-          <div class="member-name">${m.name}</div>
-          <div class="member-tags">
-            <div class="tag-role ${roleTagClass}">${m.role}</div>
-            ${speedTag}
+  if (teamList) {
+    teamList.innerHTML = state.members.map(m => {
+      let avatarClass = m.role === '班長' ? 'avatar-leader' : (m.role === '副班長' ? 'avatar-deputy' : 'avatar-member');
+      let roleTagClass = m.role === '班長' ? 'role-leader' : (m.role === '副班長' ? 'role-deputy' : 'role-member');
+      return `
+        <div class="member-card shadow-sm">
+          <div class="member-avatar ${avatarClass}">${m.role.charAt(0)}</div>
+          <div class="flex flex-col gap-1">
+            <div class="font-bold text-slate-800">${m.name}</div>
+            <div class="flex gap-2"><div class="tag-role ${roleTagClass}">${m.role}</div><div class="tag-speed ${m.efficiency >= 90 ? 'speed-fast' : 'speed-slow'}">${m.efficiency >= 90 ? '⚡ 快' : '🐢 慢'}</div></div>
           </div>
+        </div>`;
+    }).join('');
+  }
+
+  if (leaveConfig) {
+    const daysInMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0).getDate();
+    const firstDay = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1).getDay();
+
+    leaveConfig.innerHTML = state.members.map(m => `
+      <div class="px-4 py-3 border-b border-slate-50 last:border-0">
+        <div class="text-xs font-bold text-slate-400 mb-2">${m.name} 的必排休</div>
+        <div class="grid grid-cols-7 gap-1 mb-1 text-[10px] text-center text-slate-300">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div class="grid grid-cols-7 gap-1">
+          ${Array.from({length: firstDay}, () => '<div class="day-empty"></div>').join('')}
+          ${Array.from({length: daysInMonth}, (_, i) => {
+            const day = i + 1;
+            const isActive = m.requiredLeaves.includes(day);
+            return `<button class="day-btn h-7 transition ${isActive ? 'active' : 'hover:bg-slate-100'}" data-mid="${m.id}" data-day="${day}">${day}</button>`;
+          }).join('')}
         </div>
       </div>
-    `;
-  }).join('');
+    `).join('');
+  }
 
-  // 渲染休假設定部分
-  const daysInMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0).getDate();
-  leaveConfig.innerHTML = state.members.map(m => `
-    <div class="px-4 py-3 border-b border-slate-50 last:border-0">
-      <div class="text-xs font-bold text-slate-500 mb-2">${m.name}</div>
-      <div class="grid grid-cols-7 gap-1">
-        ${Array.from({length: daysInMonth}, (_, i) => {
-          const day = i + 1;
-          const isActive = m.requiredLeaves.includes(day);
-          return `<button class="day-btn h-8 rounded-lg text-xs transition ${isActive ? 'active' : 'hover:bg-slate-100'}" data-mid="${m.id}" data-day="${day}">${day}</button>`;
-        }).join('')}
-      </div>
-    </div>
-  `).join('');
-
-  summerMemberSelect.innerHTML = state.members.map(m => `<option value="${m.id}" ${state.summer.memberId === m.id ? 'selected' : ''}>${m.name}</option>`).join('');
+  if (summerMemberSelect) {
+    summerMemberSelect.innerHTML = state.members.map(m => `<option value="${m.id}" ${state.summer.memberId === m.id ? 'selected' : ''}>${m.name}</option>`).join('');
+  }
   updateSummerInfo();
 }
 
 function updateSummerInfo() {
-  if (state.summer.enabled) {
-    summerFields.style.opacity = '1';
-    summerFields.style.pointerEvents = 'auto';
-    const end = state.summer.startDay + state.summer.length - 1;
-    document.getElementById('summer-note').innerText = `✅ 排定連休：${state.summer.startDay} ~ ${end} 日`;
-  } else {
-    summerFields.style.opacity = '0.5';
-    summerFields.style.pointerEvents = 'none';
-    document.getElementById('summer-note').innerText = '';
+  const fields = document.getElementById('summer-fields');
+  const note = document.getElementById('summer-note');
+  if (fields) {
+    if (state.summer.enabled) {
+      fields.style.opacity = '1'; fields.style.pointerEvents = 'auto';
+      if (note) note.innerText = `✅ 排定連休：${state.summer.startDay} ~ ${state.summer.startDay + state.summer.length - 1} 日`;
+    } else {
+      fields.style.opacity = '0.5'; fields.style.pointerEvents = 'none'; 
+      if (note) note.innerText = '';
+    }
   }
 }
 
-// --- 排班演算法 ---
 function generateSchedule() {
   const daysInMonth = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0).getDate();
   const schedule = Array.from({length: daysInMonth}, (_, i) => ({ day: i + 1, off: [], work: [] }));
   const memberOffCounts = {};
   state.members.forEach(m => memberOffCounts[m.id] = 0);
 
-  // 1. 必排休
-  state.members.forEach(m => {
-    m.requiredLeaves.forEach(d => {
-      if (d <= daysInMonth) { schedule[d-1].off.push(m.id); memberOffCounts[m.id]++; }
-    });
-  });
-
-  // 2. 小暑假
+  state.members.forEach(m => m.requiredLeaves.forEach(d => { if (d <= daysInMonth) { schedule[d-1].off.push(m.id); memberOffCounts[m.id]++; } }));
   if (state.summer.enabled) {
-    const mId = state.summer.memberId;
     for (let i = 0; i < state.summer.length; i++) {
       const d = state.summer.startDay + i;
-      if (d <= daysInMonth && !schedule[d-1].off.includes(mId)) {
-        schedule[d-1].off.push(mId); memberOffCounts[mId]++;
+      if (d <= daysInMonth && !schedule[d-1].off.includes(state.summer.memberId)) {
+        schedule[d-1].off.push(state.summer.memberId); memberOffCounts[state.summer.memberId]++;
       }
     }
   }
 
-  // 3. 分配剩餘天數
-  const targetOff = state.monthlyLeaveDays;
-  let totalRequired = state.members.length * targetOff;
-  let currentTotalOff = Object.values(memberOffCounts).reduce((a, b) => a + b, 0);
+  const target = state.monthlyLeaveDays;
   let maxLoop = 1000;
-
-  while (currentTotalOff < totalRequired && maxLoop > 0) {
-    maxLoop--;
-    const sortedMembers = [...state.members].filter(m => memberOffCounts[m.id] < targetOff)
-      .sort((a, b) => (targetOff - memberOffCounts[b.id]) - (targetOff - memberOffCounts[a.id]));
-    if (sortedMembers.length === 0) break;
-    const member = sortedMembers[0];
-    const availableDays = schedule.filter(s => !s.off.includes(member.id)).sort((a, b) => a.off.length - b.off.length);
-    for (let dayObj of availableDays) {
-      if (canTakeLeave(member, dayObj.day, schedule)) {
-        dayObj.off.push(member.id); memberOffCounts[member.id]++; currentTotalOff++;
-        break;
-      }
-    }
+  while (Object.values(memberOffCounts).some(c => c < target) && maxLoop-- > 0) {
+    const member = [...state.members].filter(m => memberOffCounts[m.id] < target).sort((a,b) => memberOffCounts[a.id] - memberOffCounts[b.id])[0];
+    const bestDay = schedule.filter(s => !s.off.includes(member.id)).sort((a,b) => a.off.length - b.off.length)[0];
+    if (bestDay) { bestDay.off.push(member.id); memberOffCounts[member.id]++; }
   }
 
   schedule.forEach(s => state.members.forEach(m => { if (!s.off.includes(m.id)) s.work.push(m.id); }));
   state.schedule = schedule;
   renderSchedule();
-}
-
-function canTakeLeave(member, day, schedule) {
-  if (schedule[day-1].off.length >= state.members.length - 2) return false;
-  return true;
 }
 
 function renderSchedule() {
@@ -573,142 +486,147 @@ function renderSchedule() {
   document.getElementById('summary-section').classList.remove('hidden');
   const grid = document.getElementById('calendar-grid');
   const firstDay = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1).getDay();
-  grid.innerHTML = '';
-  for(let i=0; i<firstDay; i++) grid.innerHTML += '<div class="calendar-cell bg-slate-50"></div>';
+  grid.innerHTML = Array.from({length: firstDay}, () => '<div class="calendar-cell bg-slate-50 opacity-50"></div>').join('');
   state.schedule.forEach(s => {
-    const cell = document.createElement('div');
-    cell.className = 'calendar-cell';
-    cell.innerHTML = `
-      <div class="cell-date">${s.day}</div>
-      <div class="flex flex-col gap-1">
-        ${s.off.map(id => `<div class="staff-tag off font-bold">休: ${getMember(id).name}</div>`).join('')}
-        ${s.work.map(id => `<div class="staff-tag work opacity-60">${getMember(id).name}</div>`).join('')}
+    grid.innerHTML += `
+      <div class="calendar-cell">
+        <div class="cell-date">${s.day}</div>
+        <div class="flex flex-col gap-1">${s.off.map(id => `<div class="staff-tag off font-bold">休: ${getMember(id).name}</div>`).join('')}${s.work.map(id => `<div class="staff-tag work opacity-40">${getMember(id).name}</div>`).join('')}</div>
       </div>`;
-    grid.appendChild(cell);
   });
   renderStats();
-  renderTable();
 }
 
 function renderStats() {
-  const tbody = document.getElementById('stats-body');
-  const alertList = document.getElementById('alert-list');
-  alertList.innerHTML = '';
-  tbody.innerHTML = state.members.map(m => {
-    const offCount = state.schedule.filter(s => s.off.includes(m.id)).length;
-    const diff = state.monthlyLeaveDays - offCount;
-    if (diff !== 0) alertList.innerHTML += `<div class="text-xs text-red-500 font-medium">⚠️ ${m.name} 休假不足：差 ${diff} 天</div>`;
-    return `<tr><td>${m.name}</td><td>${m.efficiency}%</td><td>${state.monthlyLeaveDays}</td><td class="${diff !== 0 ? 'text-red-500 font-bold' : ''}">${offCount}</td><td>${diff === 0 ? '✅ 達標' : '❌ 未休滿'}</td><td>${state.schedule.length - offCount}</td></tr>`;
+  const alertList = document.getElementById('alert-list'); alertList.innerHTML = '';
+  document.getElementById('stats-body').innerHTML = state.members.map(m => {
+    const count = state.schedule.filter(s => s.off.includes(m.id)).length;
+    if (count < state.monthlyLeaveDays) alertList.innerHTML += `<div class="text-xs text-red-500 font-medium">⚠️ ${m.name} 未休滿 (差 ${state.monthlyLeaveDays - count} 天)</div>`;
+    return `<tr class="border-b"><td>${m.name}</td><td>${m.efficiency}%</td><td>${state.monthlyLeaveDays}</td><td class="${count < state.monthlyLeaveDays ? 'text-red-500' : ''}">${count}</td><td>${state.schedule.length - count}</td></tr>`;
   }).join('');
-  if (alertList.innerHTML === '') alertList.innerHTML = '<div class="text-green-600 text-xs">✅ 班表休假天數全數達成</div>';
+  if (!alertList.innerHTML) alertList.innerHTML = '<div class="text-green-600 text-xs">✅ 排班符合規則</div>';
+  renderTable();
 }
 
 function renderTable() {
-  const head = document.getElementById('st-head');
-  const body = document.getElementById('st-body');
+  const head = document.getElementById('st-head'); const body = document.getElementById('st-body');
   head.innerHTML = `<tr><th class="p-2 border">成員</th>${state.schedule.map(s => `<th class="border text-center">${s.day}</th>`).join('')}</tr>`;
-  body.innerHTML = state.members.map(m => `<tr><td class="p-2 border font-bold">${m.name}</td>${state.schedule.map(s => {
-    const isOff = s.off.includes(m.id);
-    return `<td class="border text-center ${isOff ? 'bg-red-50 text-red-600 font-bold' : ''}">${isOff ? '休' : '●'}</td>`;
-  }).join('')}</tr>`).join('');
+  body.innerHTML = state.members.map(m => `<tr><td class="p-2 border font-bold">${m.name}</td>${state.schedule.map(s => `<td class="border text-center ${s.off.includes(m.id) ? 'bg-red-50 text-red-600 font-bold' : ''}">${s.off.includes(m.id) ? '休' : '●'}</td>`).join('')}</tr>`).join('');
 }
 
 function setupEventListeners() {
-  monthlyLeaveInput.oninput = (e) => state.monthlyLeaveDays = parseInt(e.target.value) || 0;
-  document.getElementById('btn-prev-month').onclick = () => { state.currentDate.setMonth(state.currentDate.getMonth() - 1); renderHeader(); renderSidebar(); };
-  document.getElementById('btn-next-month').onclick = () => { state.currentDate.setMonth(state.currentDate.getMonth() + 1); renderHeader(); renderSidebar(); };
-  leaveConfig.onclick = (e) => {
+  const monthlyLeaveDays = document.getElementById('monthly-leave-days');
+  const summerToggle = document.getElementById('summer-toggle');
+  const summerMemberSelect = document.getElementById('summer-member');
+  const summerStart = document.getElementById('summer-start');
+
+  if (monthlyLeaveDays) monthlyLeaveDays.oninput = (e) => state.monthlyLeaveDays = parseInt(e.target.value) || 0;
+  
+  document.getElementById('btn-prev-month').onclick = () => { state.currentDate.setMonth(state.currentDate.getMonth()-1); renderHeader(); renderSidebar(); };
+  document.getElementById('btn-next-month').onclick = () => { state.currentDate.setMonth(state.currentDate.getMonth()+1); renderHeader(); renderSidebar(); };
+  
+  document.getElementById('leave-config').onclick = (e) => {
     if (e.target.classList.contains('day-btn')) {
-      const mid = e.target.dataset.mid;
-      const day = parseInt(e.target.dataset.day);
-      const member = getMember(mid);
-      if (member.requiredLeaves.includes(day)) member.requiredLeaves = member.requiredLeaves.filter(d => d !== day);
-      else member.requiredLeaves.push(day);
+      const { mid, day } = e.target.dataset;
+      const m = getMember(mid);
+      m.requiredLeaves = m.requiredLeaves.includes(parseInt(day)) ? m.requiredLeaves.filter(d => d !== parseInt(day)) : [...m.requiredLeaves, parseInt(day)];
       renderSidebar();
     }
   };
-  summerToggle.onchange = (e) => { state.summer.enabled = e.target.checked; updateSummerInfo(); };
-  summerMemberSelect.onchange = (e) => state.summer.memberId = e.target.value;
-  document.getElementById('summer-start').oninput = (e) => { state.summer.startDay = parseInt(e.target.value) || 1; updateSummerInfo(); };
+
+  document.getElementById('btn-edit-prev-tail').onclick = () => {
+    document.getElementById('prev-tail-tbody').innerHTML = state.members.map(m => `
+      <tr class="border-b" data-mid="${m.id}">
+        <td class="p-2 border font-bold bg-slate-50">${m.name}</td>
+        ${m.prevTail.map((v, i) => `<td class="border text-center"><input type="checkbox" ${v ? 'checked' : ''} data-idx="${i}"></td>`).join('')}
+      </tr>`).join('');
+    document.getElementById('prev-tail-modal').classList.add('open');
+  };
+
+  document.getElementById('btn-prev-tail-cancel').onclick = () => document.getElementById('prev-tail-modal').classList.remove('open');
+  document.getElementById('btn-prev-tail-save').onclick = () => {
+    const rows = document.querySelectorAll('#prev-tail-tbody tr');
+    rows.forEach(row => {
+      const mid = row.dataset.mid;
+      const inputs = row.querySelectorAll('input');
+      const m = getMember(mid);
+      if (m) m.prevTail = Array.from(inputs).map(i => i.checked);
+    });
+    document.getElementById('prev-tail-modal').classList.remove('open');
+  };
+
+  if (summerToggle) summerToggle.onchange = (e) => { state.summer.enabled = e.target.checked; updateSummerInfo(); };
+  if (summerMemberSelect) summerMemberSelect.onchange = (e) => state.summer.memberId = e.target.value;
+  if (summerStart) summerStart.oninput = (e) => { state.summer.startDay = parseInt(e.target.value) || 1; updateSummerInfo(); };
+
   document.getElementById('btn-generate').onclick = generateSchedule;
   document.getElementById('btn-view-calendar').onclick = () => switchView('calendar');
   document.getElementById('btn-view-table').onclick = () => switchView('table');
   document.getElementById('btn-copy-schedule').onclick = copyToClipboard;
-
-  const editorModal = document.getElementById('team-editor-modal');
-  document.getElementById('btn-edit-team').onclick = () => { renderEditorTable(); editorModal.classList.add('open'); };
-  document.getElementById('btn-editor-close').onclick = () => editorModal.classList.remove('open');
+  
+  document.getElementById('btn-edit-team').onclick = () => {
+    document.getElementById('editor-tbody').innerHTML = state.members.map(m => `
+      <tr data-id="${m.id}">
+        <td><input type="text" class="in-name w-24 p-2 border rounded" value="${m.name}"></td>
+        <td><input type="text" class="in-sn w-20 p-2 border rounded" value="${m.sn}"></td>
+        <td><select class="in-role p-2 border rounded"><option ${m.role==='班長'?'selected':''}>班長</option><option ${m.role==='副班長'?'selected':''}>副班長</option><option ${m.role==='組員'?'selected':''}>組員</option></select></td>
+        <td><input type="number" class="in-eff w-16 p-2 border rounded" value="${m.efficiency}"></td>
+        <td><button class="text-red-500" onclick="deleteMember('${m.id}')">移除</button></td>
+      </tr>`).join('');
+    document.getElementById('team-editor-modal').classList.add('open');
+  };
+  document.getElementById('btn-editor-close').onclick = () => document.getElementById('team-editor-modal').classList.remove('open');
+  document.getElementById('btn-editor-cancel').onclick = () => document.getElementById('team-editor-modal').classList.remove('open');
   document.getElementById('btn-editor-save').onclick = () => {
     const rows = document.querySelectorAll('#editor-tbody tr');
     state.members = Array.from(rows).map(row => ({
-      id: row.dataset.id,
-      name: row.querySelector('.in-name').value,
-      sn: row.querySelector('.in-sn').value,
-      role: row.querySelector('.in-role').value,
-      efficiency: parseInt(row.querySelector('.in-eff').value) || 0,
-      requiredLeaves: getMember(row.dataset.id).requiredLeaves || [],
-      prevTail: getMember(row.dataset.id).prevTail || [false,false,false,false,false]
+      id: row.dataset.id, name: row.querySelector('.in-name').value, sn: row.querySelector('.in-sn').value, role: row.querySelector('.in-role').value, efficiency: parseInt(row.querySelector('.in-eff').value) || 0,
+      requiredLeaves: getMember(row.dataset.id)?.requiredLeaves || [], prevTail: getMember(row.dataset.id)?.prevTail || [false,false,false,false,false]
     }));
-    renderSidebar();
-    editorModal.classList.remove('open');
+    renderSidebar(); document.getElementById('team-editor-modal').classList.remove('open');
   };
   document.getElementById('btn-add-member').onclick = () => {
     state.members.push({ id: Date.now().toString(), name: '新成員', sn: 'CS000', role: '組員', efficiency: 80, requiredLeaves: [], prevTail: [false,false,false,false,false] });
-    renderEditorTable();
+    const editorTbody = document.getElementById('editor-tbody');
+    const newRow = document.createElement('tr');
+    newRow.dataset.id = state.members[state.members.length-1].id;
+    newRow.innerHTML = `
+        <td><input type="text" class="in-name w-24 p-2 border rounded" value="新成員"></td>
+        <td><input type="text" class="in-sn w-20 p-2 border rounded" value="CS000"></td>
+        <td><select class="in-role p-2 border rounded"><option>班長</option><option>副班長</option><option selected>組員</option></select></td>
+        <td><input type="number" class="in-eff w-16 p-2 border rounded" value="80"></td>
+        <td><button class="text-red-500" onclick="deleteMember('${newRow.dataset.id}')">移除</button></td>
+    `;
+    editorTbody.appendChild(newRow);
   };
 }
 
-function switchView(view) {
-  const cal = document.getElementById('calendar-container');
-  const tbl = document.getElementById('table-view-container');
-  const btnCal = document.getElementById('btn-view-calendar');
-  const btnTbl = document.getElementById('btn-view-table');
-  if (view === 'calendar') {
-    cal.classList.remove('hidden'); tbl.classList.add('hidden');
-    btnCal.classList.add('active'); btnTbl.classList.remove('active');
-  } else {
-    cal.classList.add('hidden'); tbl.classList.remove('hidden');
-    btnCal.classList.remove('active'); btnTbl.classList.add('active');
-  }
+function switchView(v) {
+  document.getElementById('calendar-container').classList.toggle('hidden', v !== 'calendar');
+  document.getElementById('table-view-container').classList.toggle('hidden', v !== 'table');
+  document.getElementById('btn-view-calendar').classList.toggle('active', v === 'calendar');
+  document.getElementById('btn-view-table').classList.toggle('active', v === 'table');
 }
 
-function renderEditorTable() {
-  const tbody = document.getElementById('editor-tbody');
-  tbody.innerHTML = state.members.map(m => `
-    <tr data-id="${m.id}">
-      <td><input type="text" class="in-name w-24 p-2 border rounded-lg" value="${m.name}"></td>
-      <td><input type="text" class="in-sn w-20 p-2 border rounded-lg" value="${m.sn}"></td>
-      <td>
-        <select class="in-role p-2 border rounded-lg">
-          <option ${m.role === '班長' ? 'selected' : ''}>班長</option>
-          <option ${m.role === '副班長' ? 'selected' : ''}>副班長</option>
-          <option ${m.role === '組員' ? 'selected' : ''}>組員</option>
-        </select>
-      </td>
-      <td><input type="number" class="in-eff w-16 p-2 border rounded-lg" value="${m.efficiency}"></td>
-      <td><button class="text-red-500 font-bold" onclick="deleteMember('${m.id}')">移除</button></td>
-    </tr>`).join('');
+function deleteMember(id) { 
+  state.members = state.members.filter(m => m.id !== id); 
+  const row = document.querySelector(`#editor-tbody tr[data-id="${id}"]`);
+  if (row) row.remove(); 
 }
 
-function deleteMember(id) { state.members = state.members.filter(m => m.id !== id); renderEditorTable(); }
 function getMember(id) { return state.members.find(m => m.id === id); }
+
 function copyToClipboard() {
   if (!state.schedule) return;
-  let text = `【AutoRoster 班表 - ${state.currentDate.getFullYear()}/${state.currentDate.getMonth()+1}】\n\n`;
-  state.schedule.forEach(s => {
-    const offNames = s.off.map(id => getMember(id).name).join(', ');
-    text += `${s.day}日: 休 (${offNames || '無'})\n`;
-  });
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  document.body.appendChild(textarea); textarea.select();
-  document.execCommand('copy'); document.body.removeChild(textarea);
-  const btn = document.getElementById('btn-copy-schedule');
-  const oldText = btn.innerHTML; btn.innerHTML = '✅ 已複製！';
-  setTimeout(() => btn.innerHTML = oldText, 2000);
+  let t = `【AutoRoster 班表 - ${state.currentDate.getFullYear()}/${state.currentDate.getMonth()+1}】\n\n`;
+  state.schedule.forEach(s => t += `${s.day}日: 休 (${s.off.map(id => getMember(id).name).join(', ') || '無'})\n`);
+  const el = document.createElement('textarea'); el.value = t; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el);
+  const b = document.getElementById('btn-copy-schedule'); b.innerText = '✅ 已複製'; setTimeout(() => b.innerText = '📋 複製文字', 2000);
 }
 
-init();
+window.onload = function() {
+  init();
+};
 </script>
 </body>
 </html>
